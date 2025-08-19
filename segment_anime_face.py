@@ -15,6 +15,7 @@ def run_pipeline(image_path: Path, out_dir: Path, sam: SamWrapper) -> None:
     if image is None:
         raise FileNotFoundError(f"Cannot read image: {image_path}")
     masks = auto_segment(image, sam)
+
     processed = {}
     for name in PARTS:
         m = masks.get(name, np.zeros(image.shape[:2], dtype=np.uint8))
@@ -55,6 +56,7 @@ def main() -> None:
     args.out.mkdir(parents=True, exist_ok=True)
     sam = SamWrapper(model_type=args.model_type, checkpoint=args.sam_checkpoint)
     run_pipeline(args.image, args.out, sam)
+
 
 
 if __name__ == "__main__":

@@ -1,20 +1,21 @@
 from __future__ import annotations
-from typing import Dict
+from typing import Dict, Tuple, TYPE_CHECKING
 import numpy as np
 import cv2
 from io_utils import Prompt
-from postprocess import clean_mask, largest_cc
+from postprocess import clean_mask
+
+if TYPE_CHECKING:  # pragma: no cover - for type hints only
+    from sam_wrapper import SamWrapper
+
 
 
 PARTS = ["neck", "eyes", "mouth", "hair", "ears"]
 
 
-def auto_segment(image: np.ndarray) -> Dict[str, np.ndarray]:
-    """Simple color based segmentation for synthetic anime faces.
+def _heuristic_masks(image: np.ndarray) -> Dict[str, np.ndarray]:
+    """Simple color based segmentation for synthetic anime faces."""
 
-    This heuristic is intentionally lightweight for tests.  It does not aim to
-    be robust, but provides deterministic masks for synthetic data.
-    """
     h, w, _ = image.shape
 
     # Thresholds for different colors (BGR)
@@ -28,7 +29,7 @@ def auto_segment(image: np.ndarray) -> Dict[str, np.ndarray]:
     mouth = clean_mask(mouth)
     hair = clean_mask(hair)
 
-    # Face box from skin mask
+
     coords = cv2.findNonZero(skin)
     x, y, w_box, h_box = cv2.boundingRect(coords)
 
@@ -64,3 +65,36 @@ def auto_segment(image: np.ndarray) -> Dict[str, np.ndarray]:
         "hair": hair_mask,
         "ears": ears_mask,
     }
+
+
+
+def _generate_prompts(masks: Dict[str, np.ndarray]) -> Dict[str, Prompt]:
+    prompts: Dict[str, Prompt] = {}
+    for part, m in masks.items():
+        coords = cv2.findNonZero(m)
+        if coords is not None:
+            x, y, w, h = cv2.boundingRect(coords)
+            prompts[part] = Prompt(box=(x, y, x + w, y + h))
+        else:
+            prompts[part] = Prompt()
+    return prompts
+
+
+def auto_segment(image: np.ndarray, sam: "SamWrapper") -> Dict[str, np.ndarray]:
+    """Segment image into parts using SAM when available.
+
+    If SAM is not available the function falls back to deterministic color
+    based masks suitable for the synthetic unit test image.
+    """
+    masks = _heuristic_masks(image)
+    prompts = _generate_prompts(masks)
+    result: Dict[str, np.ndarray] = {}
+
+    sam.set_image(image)
+    for part in PARTS:
+        if sam.use_sam:
+            result[part] = sam.predict(prompts[part]).astype(np.uint8) * 255
+        else:
+            result[part] = masks[part]
+    return result
+

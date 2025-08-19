@@ -7,13 +7,14 @@ from io_utils import save_mask, save_json
 from visualize import overlay_masks, build_semantic_map
 from prompts_heuristics import auto_segment, PARTS
 from postprocess import clean_mask
+from sam_wrapper import SamWrapper
 
 
-def run_pipeline(image_path: Path, out_dir: Path) -> None:
+def run_pipeline(image_path: Path, out_dir: Path, sam: SamWrapper) -> None:
     image = cv2.imread(str(image_path))
     if image is None:
         raise FileNotFoundError(f"Cannot read image: {image_path}")
-    masks = auto_segment(image)
+    masks = auto_segment(image, sam)
     processed = {}
     for name in PARTS:
         m = masks.get(name, np.zeros(image.shape[:2], dtype=np.uint8))
@@ -52,7 +53,8 @@ def main() -> None:
     args = parser.parse_args()
 
     args.out.mkdir(parents=True, exist_ok=True)
-    run_pipeline(args.image, args.out)
+    sam = SamWrapper(model_type=args.model_type, checkpoint=args.sam_checkpoint)
+    run_pipeline(args.image, args.out, sam)
 
 
 if __name__ == "__main__":

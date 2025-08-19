@@ -4,7 +4,7 @@ Anime face semantic part segmentation using Meta's Segment Anything Model (SAM).
 
 ## Setup
 
-Install dependencies and download required assets:
+Install dependencies (CPU-only PyTorch wheels are used) and download required assets:
 ```bash
 python -m pip install -r requirements.txt
 mkdir -p weights assets
@@ -15,7 +15,9 @@ curl -L -o assets/lbpcascade_animeface.xml \
 
 ## Usage
 
-Segment an image into neck, eyes, mouth, hair, and ears:
+Segment an image into neck, eyes, mouth, hair, and ears.  When a SAM checkpoint
+is supplied the model runs on CPU via PyTorch; if omitted the script falls back
+to simple color heuristics (sufficient for the unit tests):
 ```bash
 python segment_anime_face.py \
     --image path/to/input.jpg \

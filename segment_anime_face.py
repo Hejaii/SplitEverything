@@ -4,6 +4,7 @@ from pathlib import Path
 import numpy as np
 import cv2
 from io_utils import save_mask, save_json, Prompt
+
 from visualize import overlay_masks, build_semantic_map
 from prompts_heuristics import auto_segment, PARTS
 from postprocess import clean_mask
@@ -40,6 +41,7 @@ def run_pipeline(image_path: Path, out_dir: Path, sam: SamWrapper, dino: Groundi
         masks = dino_segment(image, sam, dino)
     else:
         masks = auto_segment(image, sam)
+
     processed = {}
     for name in PARTS:
         m = masks.get(name, np.zeros(image.shape[:2], dtype=np.uint8))
@@ -77,6 +79,7 @@ def main() -> None:
     parser.add_argument("--sam-checkpoint")
     parser.add_argument("--dino-config")
     parser.add_argument("--dino-checkpoint")
+
     args = parser.parse_args()
 
     args.out.mkdir(parents=True, exist_ok=True)

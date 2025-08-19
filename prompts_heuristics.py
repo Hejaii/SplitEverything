@@ -9,11 +9,13 @@ if TYPE_CHECKING:  # pragma: no cover - for type hints only
     from sam_wrapper import SamWrapper
 
 
+
 PARTS = ["neck", "eyes", "mouth", "hair", "ears"]
 
 
 def _heuristic_masks(image: np.ndarray) -> Dict[str, np.ndarray]:
     """Simple color based segmentation for synthetic anime faces."""
+
     h, w, _ = image.shape
 
     # Thresholds for different colors (BGR)
@@ -26,6 +28,7 @@ def _heuristic_masks(image: np.ndarray) -> Dict[str, np.ndarray]:
     eyes = clean_mask(eyes)
     mouth = clean_mask(mouth)
     hair = clean_mask(hair)
+
 
     coords = cv2.findNonZero(skin)
     x, y, w_box, h_box = cv2.boundingRect(coords)

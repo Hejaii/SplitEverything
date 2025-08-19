@@ -8,3 +8,4 @@ pytest
 scikit-image
 segment-anything @ git+https://github.com/facebookresearch/segment-anything.git
 groundingdino @ git+https://github.com/IDEA-Research/GroundingDINO.git
+

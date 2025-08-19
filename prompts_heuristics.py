@@ -67,7 +67,6 @@ def _heuristic_masks(image: np.ndarray) -> Dict[str, np.ndarray]:
     }
 
 
-
 def _generate_prompts(masks: Dict[str, np.ndarray]) -> Dict[str, Prompt]:
     prompts: Dict[str, Prompt] = {}
     for part, m in masks.items():
@@ -97,4 +96,3 @@ def auto_segment(image: np.ndarray, sam: "SamWrapper") -> Dict[str, np.ndarray]:
         else:
             result[part] = masks[part]
     return result
-

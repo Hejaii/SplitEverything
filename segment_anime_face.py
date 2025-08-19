@@ -3,18 +3,44 @@ import argparse
 from pathlib import Path
 import numpy as np
 import cv2
-from io_utils import save_mask, save_json
+from io_utils import save_mask, save_json, Prompt
+
 from visualize import overlay_masks, build_semantic_map
 from prompts_heuristics import auto_segment, PARTS
 from postprocess import clean_mask
 from sam_wrapper import SamWrapper
+from grounding_dino_wrapper import GroundingDINO
 
 
-def run_pipeline(image_path: Path, out_dir: Path, sam: SamWrapper) -> None:
+def dino_segment(image: np.ndarray, sam: SamWrapper, dino: GroundingDINO) -> dict:
+    """Use GroundingDINO text prompts to obtain boxes then refine with SAM."""
+    prompts = {
+        "eyes": "eye",
+        "mouth": "mouth",
+        "hair": "hair",
+        "ears": "ear",
+        "neck": "neck",
+    }
+    result = {}
+    sam.set_image(image)
+    for part, text in prompts.items():
+        combined = np.zeros(image.shape[:2], dtype=np.uint8)
+        boxes = dino.detect(image, text)
+        for box in boxes:
+            mask = sam.predict(Prompt(box=box)).astype(np.uint8) * 255
+            combined = np.maximum(combined, mask)
+        result[part] = combined
+    return result
+
+
+def run_pipeline(image_path: Path, out_dir: Path, sam: SamWrapper, dino: GroundingDINO | None = None) -> None:
     image = cv2.imread(str(image_path))
     if image is None:
         raise FileNotFoundError(f"Cannot read image: {image_path}")
-    masks = auto_segment(image, sam)
+    if dino is not None and dino.use_dino and sam.use_sam:
+        masks = dino_segment(image, sam, dino)
+    else:
+        masks = auto_segment(image, sam)
 
     processed = {}
     for name in PARTS:
@@ -51,12 +77,15 @@ def main() -> None:
     parser.add_argument("--auto", action="store_true")
     parser.add_argument("--model-type", default="vit_h")
     parser.add_argument("--sam-checkpoint")
+    parser.add_argument("--dino-config")
+    parser.add_argument("--dino-checkpoint")
+
     args = parser.parse_args()
 
     args.out.mkdir(parents=True, exist_ok=True)
     sam = SamWrapper(model_type=args.model_type, checkpoint=args.sam_checkpoint)
-    run_pipeline(args.image, args.out, sam)
-
+    dino = GroundingDINO(config_path=args.dino_config, checkpoint=args.dino_checkpoint)
+    run_pipeline(args.image, args.out, sam, dino)
 
 
 if __name__ == "__main__":
